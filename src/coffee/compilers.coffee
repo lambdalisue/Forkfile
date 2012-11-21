@@ -85,20 +85,18 @@ exports.less = (src, dst, opts, done) ->
   # compile src(s)
   if typeof src is 'string'
     # compile single LESS to CSS
-    parser = new(less.Parser)({
-        'paths': [path.dirname(src)],
-        'filename': dst
-    });
+    parser = new(less.Parser)
+      'paths': [path.dirname(src)]
+      'filename': dst
     fs.readFile src, opts.encoding, (err, data) ->
       throw err if err
       compile(parser, data)
   else
     # join LESS files and compile to a single CSS
     paths = [path.dirname(s) for s in src]
-    parser = new(less.Parser)({
-        'paths': paths,
-        'filename': dst
-    });
+    parser = new(less.Parser)
+      'paths': paths
+      'filename': dst
     exports.readAllFiles src, opts.encoding, (data) ->
       compile(parser, data)
 
@@ -146,6 +144,11 @@ exports.mocha = (files, done) ->
   ###
   Run unittest via mocha
   ###
+  exec = require('child_process').exec
   mocha = process.env.MOCHA or MOCHA
   args = ['--compilers', 'coffee:coffee-script'].concat(files)
-  exports.execFile(mocha, args, done)
+  exec mocha + ' ' + args.join(' '), (err, stdout, stderr) ->
+    throw err if err
+    console.log(stdout) if stdout
+    console.warn(stderr) if stderr
+    done() if done

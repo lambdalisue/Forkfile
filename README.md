@@ -6,6 +6,24 @@ You need a **Fork** to eat a **Cake**!
 This `Forkfile` is a assistance file for `Cakefile` with several useful
 functions to keep `Cakefile` as simple as possible.
 
+Features
+----------------
+`Cakefile` bundled in this repository give you the following features powered
+by `Fakefile`
+
+-   Compile CoffeeScript files to JavaScript files
+-   Compile CoffeeScript files to a single JavaScript file
+-   Compose generated JavaScript file with Library JavaScript files
+-   Compile LESS files to CSS files
+-   Compile LESS files to a single CSS file
+-   Compose generated CSS file with Library CSS files
+-   Minify JavaScript/CSS files via YUI Compressor
+-   Run unittests via Mocha
+-   Create a HTML for testing in Browser via Mocha
+-   Create instrumented JavaScript files via CoverJS
+-   Run demo web server (0.0.0.0:8000 default)
+
+
 How to use
 --------------------
 1.  Download `Cakefile` and `Forkfile` to your project directory.
@@ -33,6 +51,8 @@ How to use
         |
         +- demo
         |   +- index.html               - A index HTML file for DEMO server
+        |   |
+        |   +- test.html                - Generated HTML file for testing in Browser
         |
         +- build
         |   +- Product.0.0.0.js         - Product JavaScript file come here
@@ -71,6 +91,14 @@ How to use
 
         Run demo server at 0.0.0.0:8000 (in default).
 
+    -   `cake test:mocha`
+
+        Run unittests via mocha in node.js
+
+    -   `cake test:html`
+
+        Create a HTML file for testing in Browser via mocha
+
     -   `cake clean`
 
         Clean all generated files
@@ -104,9 +132,9 @@ files by adding `-` at the begining of the pattern. See example below
 Information
 ----------------------
 
-:Version: 0.0.1
-:Author: lambdalisue
-:License: MIT license
-:Url: http://github.com/lambdalisue/Forkfile
+-   Version: 0.1.0
+-   Author: lambdalisue
+-   License: MIT license
+-   Url: http://github.com/lambdalisue/Forkfile
 
 Copyright(c) 2012 lambdalisue, hashnote.net all right reserved.

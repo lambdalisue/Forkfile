@@ -2,6 +2,20 @@ fs = require 'fs'
 path = require 'path'
 spawn = require('child_process').spawn
 
+exports.exists = ->
+  # `exists` may moved from `path` to `fs` from node.js ver 0.8.4
+  if fs.exists?
+    return fs.exists.apply(fs, arguments)
+  else
+    return path.exists.apply(path, arguments)
+
+exports.existsSync = ->
+  # `existsSync` may moved from `path` to `fs` from node.js ver 0.8.4
+  if fs.existsSync?
+    return fs.existsSync.apply(fs, arguments)
+  else
+    return path.existsSync.apply(path, arguments)
+
 exports.execFile = (file, args, done) ->
   ###
   Execute file and lead stream into stdout/stderr
@@ -53,7 +67,7 @@ exports.makedirs = (dirpath) ->
     - mkdirp
   ###
   mkdirp = require 'mkdirp'
-  if not path.existsSync(dirpath)
+  if not exports.existsSync(dirpath)
     mkdirp.sync(dirpath)
 
 
