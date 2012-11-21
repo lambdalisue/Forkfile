@@ -132,7 +132,7 @@ files by adding `-` at the begining of the pattern. See example below
 Information
 ----------------------
 
--   Version: 0.1.0
+-   Version: 0.1.1
 -   Author: lambdalisue
 -   License: MIT license
 -   Url: http://github.com/lambdalisue/Forkfile
