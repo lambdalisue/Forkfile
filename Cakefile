@@ -71,7 +71,7 @@ REQUIRED_MODULES = [
 fs = require 'fs'
 path = require 'path'
 spawn = require('child_process').spawn
-fork = require './build/Forkfile.0.0.1.js'
+fork = require './Forkfile'
 
 option '-e', '--encoding', 'Encoding used for read/write a file'
 option '-w', '--watch', 'Continuously execute action'
