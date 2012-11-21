@@ -21,8 +21,8 @@ License:  MIT License
 Copyright (c) lambdalisue, hashnote.net all right reserved.
 ###
 NAME                    = 'Forkfile'
-VERSION                 = '0.1.1'
-RELEASE_ROOT            = 'build'
+VERSION                 = '0.1.0'
+RELEASE_ROOT            = 'out'
 # Demo
 DEMO_ROOT               = 'demo'
 DEMO_SERVER             = '0.0.0.0'

@@ -54,7 +54,7 @@ How to use
         |   |
         |   +- test.html                - Generated HTML file for testing in Browser
         |
-        +- build
+        +- out
         |   +- Product.0.0.0.js         - Product JavaScript file come here
         |   |
         |   +- Product.0.0.0.min.js     - Minified JavaScript file come here
@@ -132,7 +132,7 @@ files by adding `-` at the begining of the pattern. See example below
 Information
 ----------------------
 
--   Version: 0.1.1
+-   Version: 0.1.0
 -   Author: lambdalisue
 -   License: MIT license
 -   Url: http://github.com/lambdalisue/Forkfile
