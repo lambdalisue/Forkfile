@@ -1,0 +1,269 @@
+var fs = require('fs'),
+    path = require('path'),
+    exec = require('child_process').exec,
+    spawn = require('child_process').spawn,
+    url = require('url'),
+    http = require('http'),
+    mkdirp = require('mkdirp'),
+    _coffee = require('coffee-script'),
+    _less = require('less'),
+    underscore = require('underscore');
+
+var YUI_COMPRESSOR = "~/.yuicompressor/build/yuicompressor-2.4.7.jar",
+    COFFEELINT = "./node_modules/coffeelint/bin/coffeelint",
+    COFFEELINT_CONFIG_FILE  = "./config/coffeelint.json",
+    COVERJS = "./node_modules/coverjs/bin/cover.js",
+    MOCHA = "./node_modules/mocha/bin/mocha";
+
+var CONTENT_TYPES = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif'
+};
+
+
+function Evangelist() {}
+Evangelist.reset = '\x1b[0m';
+Evangelist.bold = '\x1b[0;1m';
+Evangelist.red = '\x1b[0;31m';
+Evangelist.green = '\x1b[0;32m';
+Evangelist.check = '\u2713';
+Evangelist.cross = '\u2A2F';
+Evangelist.wrapArgs = function(args, before, after) {
+    args.unshift(before);
+    args.push(after);
+    return args;
+};
+Evangelist.prototype.log = function() {
+    console.log.apply(this, arguments);
+};
+Evangelist.prototype.warn = function() {
+    console.warn.apply(this, arguments);
+};
+Evangelist.prototype.info = function() {
+    var args = Array.prototype.slice.call(arguments);
+    args = Evangelist.wrapArgs(args, Evangelist.green, Evangelist.reset);
+    this.log.apply(this, args);
+};
+Evangelist.prototype.title = function() {
+    //var args = Evangelist._slice(arguments);
+    var args = Array.prototype.slice.call(arguments);
+    args = Evangelist.wrapArgs(args, Evangelist.bold, Evangelist.reset);
+    this.log.apply(this, args);
+};
+Evangelist.prototype.error = function() {
+    var args = Array.prototype.slice.call(arguments);
+    args = Evangelist.wrapArgs(args, Evangelist.red, Evangelist.reset);
+    this.warn.apply(this, args);
+};
+Evangelist.prototype.success = function() {
+    var args = Array.prototype.slice.call(arguments);
+    args.unshift(Evangelist.check);
+    this.info.apply(this, args);
+};
+Evangelist.prototype.fail = function() {
+    var args = Array.prototype.slice.call(arguments);
+    args.unshift(Evangelist.cross);
+    this.error.apply(this, args);
+};
+var evangelist;
+exports.evangelist = evangelist = new Evangelist();
+
+extend = function(dst, src) {
+    for (var key in src){
+        dst[key] = src[key];
+    }
+    return dst;
+};
+
+execFile = function(file, args, callback) {
+    var proc = spawn(file, args);
+    proc.stdout.on('data', function(data) {
+        process.stdout.write(data);
+    });
+    proc.stderr.on('data', function(data) {
+        process.stderr.write(data);
+    });
+    return proc;
+};
+
+createDirectoryTree = function(dirpath) {
+    if (!path.existsSync(dirpath)) {
+        mkdirp.sync(dirpath);
+    }
+};
+
+exports.readAll = readAll = function(srcs, encoding) {
+    var buffer = new Array;
+    for (var i=0; i<srcs.length; i++) {
+        buffer.push(fs.readFileSync(srcs[i], encoding));
+    }
+    return buffer.join("\n");
+};
+
+exports.coffee = coffee = function (src, dst, opts) {
+    var cs, js;
+    // set default values
+    opts = extend({'bare': true, 'encoding': 'utf-8'}, opts);
+    // create directory tree
+    createDirectoryTree(path.dirname(dst));
+    // compile src(s)
+    if (typeof src === 'string') {
+        // Single File Compile
+        cs = fs.readFileSync(src, opts.encoding);
+        if (cs === '') {
+            return;
+        }
+        js = _coffee.compile(cs, {'bare': opts.bare})
+        if (opts.dry !== false) {
+            fs.writeFileSync(dst, js, opts.encoding)
+        }
+    } else {
+        // Join CoffeeScripts and compile to a single JavaScript
+        cs = readAll(src, opts.encoding);
+        if (cs === '') {
+            return;
+        }
+        js = _coffee.compile(cs, {'bare': opts.bare})
+        if (opts.dry !== false) {
+            fs.writeFileSync(dst, js, opts.encoding)
+        }
+    }
+};
+
+exports.less = less = function (src, dst, opts) {
+    var parser, ls, cs, progress;
+    // set default values
+    opts = extend({'encoding': 'utf-8'}, opts);
+    // create directory tree
+    createDirectoryTree(path.dirname(dst));
+    if (typeof src === 'string') {
+        // Single File Compile
+        parser = new(_less.Parser)({
+            'paths': [path.dirname(src)],
+            'filename': dst
+        });
+        ls = fs.readFileSync(src, opts.encoding);
+        if (ls === '') {
+            return;
+        }
+        parser.parse(ls, function(err, tree) {
+            if (err) {
+                evangelist.error('LESS Parse error:', err.message);
+                return;
+            }
+            cs = tree.toCSS();
+            if (opts.dry !== false) {
+                fs.writeFileSync(dst, cs, opts.encoding)
+            }
+        });
+    } else {
+        // Compile each LESS and combine CSS
+        ls = readAll(src, opts.encoding);
+        if (ls === '') {
+            return;
+        }
+        parser = new(_less.Parser)({
+            'paths': underscore.map(src, function(item){return path.dirname(item);}),
+            'filename': dst
+        });
+        parser.parse(ls, function(err, tree) {
+            if (err) {
+                evangelist.error('LESS Parse error:', err.message, 'in', src[i]);
+                return;
+            }
+            cs = tree.toCSS();
+            if (opts.dry !== false) {
+                fs.writeFileSync(dst, cs, opts.encoding)
+            }
+        });
+    }
+};
+
+exports.minify = minify = function (src, dst, callback) {
+    var args = ['-jar', YUI_COMPRESSOR, src, '-o', dst],
+        proc = execFile('java', args);
+    if (callback) {
+        proc.on('exit', function(code) {
+            callback(code);
+        });
+    }
+};
+
+exports.coffeelint = coffeelint = function (srcs, config, callback) {
+    var args = ['-f', config].concat(srcs),
+        proc = execFile(COFFEELINT, args);
+    if (callback) {
+        proc.on('exit', function(code) {
+            callback(code);
+        });
+    }
+};
+
+exports.coverjs = coverjs = function (srcs, dst, callback) {
+    var args = ['--recursive'].concat(srcs).concat(['--output', dst]),
+        proc = execFile(COVERJS, args);
+    if (callback) {
+        proc.on('exit', function(code) {
+            callback(code);
+        });
+    }
+};
+
+exports.mocha = mocha = function (srcs, callback) {
+    var args = ['--compilers', 'coffee:coffee-script'].concat(srcs),
+        proc = execFile(MOCHA, args);
+    if (callback) {
+        proc.on('exit', function(code) {
+            callback(code);
+        });
+    }
+};
+
+
+exports.createStaticServer = createStaticServer = function (root) {
+    loadStaticFile = function (request, response) {
+        findContentType = function (uri) {
+            var ext = path.extname(uri);
+            for(var type in CONTENT_TYPES) {
+                if (type === ext) {
+                    return CONTENT_TYPES[type];
+                }
+            }
+            return 'text/plain';
+        };
+        var uri, filename;
+        uri = url.parse(request.url).pathname;
+        uri = uri === '/' ? 'index.html' : uri;
+        filename = path.join(root, uri)
+        path.exists(filename, function (exists) {
+            if (!exists) {
+                if (uri !== '/favicon.ico') {
+                    evangelist.info("404", "Not Found");
+                }
+                response.writeHead(404, {'Content-Type': 'text/plain'});
+                response.write("404 Not found\n" + filename + "\n");
+                response.end();
+                return;
+            }
+            fs.readFile(filename, 'binary', function (err, content) {
+                if (err) {
+                    evangelist.error("500", "Server error", uri);
+                    response.writeHead(500, {'Content-Type': 'text/plain'});
+                    response.write(err + "\n" + filename + "\n");
+                    response.end();
+                    return;
+                }
+                evangelist.log("200", "OK", uri);
+                response.writeHead(200, {'Content-Type': findContentType(uri)})+
+                response.write(content, 'binary');
+                response.end();
+            });
+        });
+    };
+    return http.createServer(loadStaticFile);
+};
