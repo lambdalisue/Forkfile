@@ -12,6 +12,9 @@ Features:
   - Create instrumented JavaScript files via CoverJS
   - Run demo web server (0.0.0.0:8000 default)
 
+Require:
+  - Forkfile
+
 Author:   lambdalisue
 License:  MIT License
 
@@ -63,7 +66,7 @@ HEADER_JS = """
  */
 """
 HEADER_CSS = HEADER_JS
-COFFEELINT_CONFIG_FILE  = 'config/coffeelint.json'
+COFFEELINT_CONFIG_FILE  = null
 REQUIRED_MODULES = [
   'growl',
 ]
@@ -75,8 +78,6 @@ fork = require './Forkfile'
 
 option '-e', '--encoding', 'Encoding used for read/write a file'
 option '-w', '--watch', 'Continuously execute action'
-option '-v', '--verbose [VERBOSE]', 'set the logging level'
-option '-o', '--optimize', 'remove DEBUG code block before compile'
 
 # Use Konsole as Console
 console = fork.konsole
@@ -157,11 +158,12 @@ task 'compile:coffee', "Compile CoffeeScript files to JavaScript files", (option
       notify("Failed to compile `#{src}`\n\n#{e.message}", {'title': "Cakefile"});
   options.bare = true
   filePairList = makeFilePairList(SRC_ROOT, SRC_CS, SRC_JS, '.js', SRC_FILES)
-  for filePair in filePairList then do (filePair) ->
-    [src, dst] = filePair
-    compile(src, dst)
-    if options.watch
-      fs.watchFile(src, -> compile(src, dst))
+  if filePairList.length > 0
+    for filePair in filePairList then do (filePair) ->
+      [src, dst] = filePair
+      compile(src, dst)
+      if options.watch
+        fs.watchFile(src, -> compile(src, dst))
 
 task 'compile:coffee:test', "Compile CoffeeScript files to JavaScript files for Unittest", (options) ->
   console.title "Compile CoffeeScript files to JavaScript files for Unittest ..."
@@ -175,11 +177,12 @@ task 'compile:coffee:test', "Compile CoffeeScript files to JavaScript files for 
       notify("Failed to compile `#{src}`\n\n#{e.message}", {'title': "Cakefile"});
   options.bare = true
   filePairList = makeFilePairList(TEST_ROOT, TEST_CS, TEST_JS, '.js', TEST_FILES)
-  for filePair in filePairList then do (filePair) ->
-    [src, dst] = filePair
-    compile(src, dst)
-    if options.watch
-      fs.watchFile(src, -> compile(src, dst))
+  if filePairList.length > 0
+    for filePair in filePairList then do (filePair) ->
+      [src, dst] = filePair
+      compile(src, dst)
+      if options.watch
+        fs.watchFile(src, -> compile(src, dst))
 
 task 'compile:coffee:release', "Compile CoffeeScript files to a single JavaScript file", (options) ->
   console.title "Compile CoffeeScript files to a single JavaScript file..."
@@ -205,7 +208,7 @@ task 'compile:coffee:release', "Compile CoffeeScript files to a single JavaScrip
   options.bare = false
   dst = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.js"
   fileList = makeFileList(SRC_ROOT, SRC_CS, SRC_FILES)
-  compile(fileList, dst)
+  compile(fileList, dst) if fileList.length > 0
 
 task 'compile:less', "Compile LESS files to CSS files", (options) ->
   console.title "Compile LESS files to CSS files ..."
@@ -218,11 +221,12 @@ task 'compile:less', "Compile LESS files to CSS files", (options) ->
       console.error("  Error:", e.message)
       notify("Failed to compile `#{src}`\n\n#{e.message}", {'title': "Cakefile"});
   filePairList = makeFilePairList(STYLE_ROOT, STYLE_LESS, STYLE_CSS, '.css', STYLE_FILES)
-  for filePair in filePairList then do (filePair) ->
-    [src, dst] = filePair
-    compile(src, dst)
-    if options.watch
-      fs.watchFile(src, -> compile(src, dst))
+  if filePairList.length > 0
+    for filePair in filePairList then do (filePair) ->
+      [src, dst] = filePair
+      compile(src, dst)
+      if options.watch
+        fs.watchFile(src, -> compile(src, dst))
 
 task 'compile:less:release', "Compile LESS files to a single CSS file", (options) ->
   console.title "Compile LESS files to a single CSS file ..."
@@ -236,7 +240,7 @@ task 'compile:less:release', "Compile LESS files to a single CSS file", (options
       notify("Failed to compile `#{src}`\n\n#{e.message}", {'title': "Cakefile"});
   dst = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.css"
   fileList = makeFileList(STYLE_ROOT, STYLE_LESS, STYLE_FILES)
-  compile(fileList, dst)
+  compile(fileList, dst) if fileList.length > 0
 
 task 'lint', 'Analyse CoffeeScript files via coffeelint', ->
   console.title "Analyse CoffeeScript files via coffeelint ..."
@@ -246,7 +250,7 @@ task 'lint', 'Analyse CoffeeScript files via coffeelint', ->
   # Test Codes
   fileList = fileList.concat(makeFileList(TEST_ROOT, TEST_CS, TEST_FILES))
   # call lint
-  fork.coffeelint(fileList, COFFEELINT_CONFIG_FILE)
+  fork.coffeelint(fileList, COFFEELINT_CONFIG_FILE) if fileList.length > 0
 
 task 'mocha', 'Test CoffeeScript files via mocha', ->
   # Compile files before
@@ -256,9 +260,7 @@ task 'mocha', 'Test CoffeeScript files via mocha', ->
   console.title "Test CoffeeScript files via mocha ..."
   # Find test files
   fileList = makeFileList(TEST_ROOT, TEST_CS, TEST_FILES)
-  if not fileList or fileList.length is 0
-    console.error 'No test files exists'
-  fork.mocha(fileList)
+  fork.mocha(fileList) if fileList.length > 0
 
 task 'coverjs', 'Make instrument files of each JavaScript files via coverjs', ->
   # Compile files before
@@ -267,20 +269,38 @@ task 'coverjs', 'Make instrument files of each JavaScript files via coverjs', ->
   console.title "Make instrument files of each JavaScript files via coverjs"
   # Create coverage files
   fileList = makeFileList(SRC_ROOT, SRC_JS, COV_FILES)
-  fork.coverjs(fileList, COV_ROOT)
+  fork.coverjs(fileList, COV_ROOT) if fileList.length > 0
 
-task 'minify:javascript', "Minify #{NAME}.#{VERSION}.js to #{NAME}.#{VERSION}.min.js", ->
+task 'minify:javascript', "Minify #{NAME}.#{VERSION}.js to #{NAME}.#{VERSION}.min.js", (options) ->
   basename = "#{NAME}.#{VERSION}"
   src = "#{RELEASE_ROOT}/#{basename}.js"
   dst = "#{RELEASE_ROOT}/#{basename}.min.js"
-
-  console.title "Minify #{NAME}.#{VERSION}.js to #{NAME}.#{VERSION}.min.js ..."
-  fork.minify(src, dst)
+  path.exists src, (exists) ->
+    if exists
+      console.title "Minify #{NAME}.#{VERSION}.js to #{NAME}.#{VERSION}.min.js ..."
+      fork.minify src, dst, ->
+        console.success "The file has minified"
+        # Add Header
+        fs.readFile dst, options.encoding, (err, data) ->
+          throw err if err
+          contents = [HEADER_JS, data]
+          fs.writeFile dst, contents.join("\n"), (err) ->
+            throw err if err
+            console.success "The file has compose with Header"
 
 task 'minify:css', "Minify #{NAME}.#{VERSION}.css to #{NAME}.#{VERSION}.min.css", ->
   basename = "#{NAME}.#{VERSION}"
   src = "#{RELEASE_ROOT}/#{basename}.css"
   dst = "#{RELEASE_ROOT}/#{basename}.min.css"
-
-  console.title "Minify #{NAME}.#{VERSION}.css to #{NAME}.#{VERSION}.min.css ..."
-  fork.minify(src, dst)
+  path.exists src, (exists) ->
+    if exists
+      console.title "Minify #{NAME}.#{VERSION}.css to #{NAME}.#{VERSION}.min.css ..."
+      fork.minify src, dst, ->
+        console.success "The file has minified"
+        # Add Header
+        fs.readFile dst, options.encoding, (err, data) ->
+          throw err if err
+          contents = [HEADER_CSS, data]
+          fs.writeFile dst, contents.join("\n"), (err) ->
+            throw err if err
+            console.success "The file has compose with Header"

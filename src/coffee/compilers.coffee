@@ -110,9 +110,15 @@ exports.minify = (src, dst, done) ->
   Require
     - YUI_COMPRESSOR
   ###
+  # exec is required because to handle `~/` in the path
+  exec = require('child_process').exec
   compressor = process.env.YUI_COMPRESSOR or YUI_COMPRESSOR
   args = ['-jar', compressor, src, '-o', dst]
-  exports.exexFile('java', args, done)
+  exec 'java ' + args.join(' '), (err, stdout, stderr) ->
+    throw err if err
+    console.log(stdout) if stdout
+    console.warn(stderr) if stderr
+    done() if done
 
 
 exports.coffeelint = (files, config, done) ->
@@ -124,7 +130,7 @@ exports.coffeelint = (files, config, done) ->
     args = ['-f', config].concat(files)
   else
     args = files
-  exports.exexFile(lint, args, done)
+  exports.execFile(lint, args, done)
 
 
 exports.coverjs = (files, dst, done) ->
@@ -133,7 +139,7 @@ exports.coverjs = (files, dst, done) ->
   ###
   coverjs = process.env.COVERJS or COVERJS
   args = ['--recursive'].concat(files).concat(['--output', dst])
-  exports.exexFile(coverjs, args, done)
+  exports.execFile(coverjs, args, done)
 
 
 exports.mocha = (files, done) ->
@@ -142,4 +148,4 @@ exports.mocha = (files, done) ->
   ###
   mocha = process.env.MOCHA or MOCHA
   args = ['--compilers', 'coffee:coffee-script'].concat(files)
-  exports.exexFile(mocha, args, done)
+  exports.execFile(mocha, args, done)
