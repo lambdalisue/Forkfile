@@ -20,7 +20,7 @@ License:  MIT License
 Copyright (c) lambdalisue, hashnote.net all right reserved.
 ###
 NAME                    = 'Forkfile'
-VERSION                 = '0.2.0'
+VERSION                 = '0.2.1'
 RELEASE_ROOT            = 'out'
 # Demo
 DEMO_ROOT               = 'demo'
