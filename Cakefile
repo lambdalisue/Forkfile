@@ -30,35 +30,28 @@ DEMO_PORT               = '8000'
 DEMO_TEST_FILENAME      = 'test.html'
 DEMO_TEST_VENDER_ROOT   = 'vender'
 DEMO_TEST_EXTRA_VENDERS = null
-# Source Code
-SRC_ROOT                = 'src'
-SRC_CS                  = 'coffee'
-SRC_JS                  = 'js'
-SRC_FILES               = [
-  'konsole.coffee',
-  'utils.coffee',
-  '**/*.coffee'
+# Script
+SCRIPT_CS_ROOT          = 'src/coffee'
+SCRIPT_JS_ROOT          = 'src/js'
+SCRIPT_FILES            = [
+  'konsole',
+  'core',
+  '**/*',
 ]
-# Libraries
-LIB_ROOT                = 'lib'
-LIB_JS                  = 'js'
-LIB_CSS                 = 'css'
-LIB_JS_FILES            = ['**/*.js']
-LIB_CSS_FILES           = ['**/*.css']
-# Test Code
-TEST_ROOT               = 'test'
-TEST_CS                 = 'coffee'
-TEST_JS                 = 'js'
-TEST_FILES              = ['**/*.spec.coffee']
+# TEST
+TEST_CS_ROOT          = 'test/coffee'
+TEST_JS_ROOT          = 'test/js'
+TEST_FILES            = [
+  '**/*.spec',
+]
+TEST_HTML_ROOT        = DEMO_ROOT
+TEST_HTML_FILE        = 'test.html'
 # Style
-STYLE_ROOT              = 'style'
-STYLE_LESS              = 'less'
-STYLE_CSS               = 'css'
-STYLE_FILES             = ['**/*.less']
-# Coverage
-COV_ROOT                = null
-COV_FILES               = ['**/*.js']
-COV_OUTPUT              = 'coverage.html'
+STYLE_LESS_ROOT         = 'sty/less'
+STYLE_CSS_ROOT          = 'sty/css'
+STYLE_FILES             = [
+  '**/*',
+]
 
 HEADER_JS = """
 /**
@@ -68,19 +61,18 @@ HEADER_JS = """
  * URL:     http://hashnote.net/
  * License: MIT License
  * 
- * Copyright (C) 2012 lambdalisue, hashnote.net allright reserved.
+ * Copyright (C) 2012 lambdalisue, hashnote.net all right reserved.
  */
 """
 HEADER_CSS = HEADER_JS
-COFFEELINT_CONFIG_FILE  = null
-REQUIRED_MODULES = [
-  'growl',
-]
+COFFEELINT_CONFIG = null
+YUI_COMPRESSOR = '~/.yuicompressor/build/yuicompressor-2.4.7.jar'
+REQUIRED_MODULES = []
 ###########################################################################
 fs = require 'fs'
 path = require 'path'
 spawn = require('child_process').spawn
-fork = require './Forkfile'
+fork = require './out/Forkfile.0.1.0.js'
 
 option '-e', '--encoding', 'Encoding used for read/write a file'
 option '-w', '--watch', 'Continuously execute action'
@@ -88,299 +80,238 @@ option '-f', '--force', 'Force to execute action'
 
 # Use Konsole as Console
 console = fork.konsole
+# Use `console.noColor = true` to disable coloring
+#console.noColor = true
 
+truncateString = (str, prefix, suffix) ->
+  return str[prefix.length...str.length-suffix.length]
 
-makeFileList = (root, src, patterns) ->
-  underscore = require 'underscore'
-  src = path.join(root, src)
-  filenames = fork.globset(patterns, src)
-  return underscore.map(filenames, (filename) -> path.join(src, filename))
+prependHeaderToFile = (file, header, encoding, done) ->
+  fs.readFile file, encoding, (err, data) ->
+    throw err if err
+    data = header + "\n" + data
+    fs.writeFile file, data, encoding, (err) ->
+      throw err if err
+      done() if done
 
-
-makeFilePairList = (root, src, dst, ext, patterns) ->
-  underscore = require 'underscore'
-  src = path.join(root, src)
-  dst = path.join(root, dst)
-  filenames = fork.globset(patterns, src)
-  return underscore.map(filenames, (filename) ->
-    dirname = path.dirname(filename)
-    basename = path.basename(filename, path.extname(filename))
-    srcFile = path.join(src, filename)
-    dstFile = path.join(dst, dirname, basename + ext)
-    return [srcFile, dstFile]
-  )
-
-
-notify = ->
-  # Notify with Growl
-  try
-    growl = require 'growl'
-    growl.apply(arguments)
-  catch e
-    # Fail silently
+compileCoffee = (files, csRoot, jsRoot, options, done) ->
+  complete = ->
+    if options.watch
+      console.log " + Watching file changes..."
+    done(options) if done
+  # create file list
+  fileList = fork.globset(files, csRoot, '.coffee')
+  if fileList.length <= 0
+    done(options) if done
     return
+  console.log.strong "Compile CoffeeScript files to JavaScript files ..."
+  # compile each CoffeeScript to JavaScript
+  options.bare = true
+  options.encoding = options.encoding or 'utf-8'
+  remaining = fileList.length
+  for src in fileList then do (src) ->
+    base = truncateString(src, csRoot, '.coffee')
+    dst = jsRoot + base + '.js'
+    compile = ->
+      fork.compiler.coffee src, dst, options, ->
+        complete() if --remaining is 0
+    compile()
+    if options.watch
+      fs.watchFile src, compile
+  return false
 
+task2 'clean', 'Clean up generated files', ->
+  fork.execFile('rm', ['-rf', SCRIPT_JS_ROOT])
+  fork.execFile('rm', ['-rf', TEST_JS_ROOT])
+  fork.execFile('rm', ['-rf', STYLE_CSS_ROOT])
 
-task 'install', 'Install required node modules', ->
+task2 'install', 'Install required node modules', ->
   fork.installRequiredModules(REQUIRED_MODULES)
 
-
-task 'clean', 'Clean up generated files', ->
-  fork.execFile('rm', ['-rf', path.join(SRC_ROOT, SRC_JS)])
-  fork.execFile('rm', ['-rf', path.join(TEST_ROOT, TEST_JS)])
-  fork.execFile('rm', ['-rf', path.join(STYLE_ROOT, STYLE_CSS)])
-  fork.execFile('rm', ['-rf', COV_ROOT])
-  fork.execFile('rm', ['-rf', COV_OUTPUT])
-
-
-task 'demo', "Start Demo server at #{DEMO_SERVER}:#{DEMO_PORT}", ->
-  console.title "Start demo server at #{DEMO_SERVER}:#{DEMO_PORT}..."
-  server = fork.createStaticServer(DEMO_ROOT)
+task2 'demo', "Start Demo server at #{DEMO_SERVER}:#{DEMO_PORT}", ->
+  if not fork.existsSync DEMO_ROOT
+    console.error "There is no `#{DEMO_ROOT}` directory. You need to create it before starting Demo server."
+    return
+  server = fork.network.createStaticServer(DEMO_ROOT)
+  console.log.strong "Start demo server at #{DEMO_SERVER}:#{DEMO_PORT}..."
   server.listen(DEMO_PORT, DEMO_SERVER)
 
+task2 'release', "Create product JavaScript/CSS and minify to release the product", (options, done) ->
+  invoke2 'compile:release', options, ->
+    invoke2 'minify', options, done
 
-task 'develop', 'Start developping mode (Watch file changes and compile)', (options) ->
-  options.watch = true
-  invoke 'lint' if SRC_ROOT or TEST_ROOT
-  invoke 'build:develop'
-  invoke 'coverjs' if COV_ROOT
-  invoke 'mocha' if TEST_ROOT
+task2 'compile', "Compile all CoffeeScript/LESS files into JavaScript/CSS files", (options, done) ->
+  invoke2 'compile:coffee', options, ->
+    invoke2 'compile:coffee:test', options, ->
+      invoke2 'compile:less', options, done
 
+task2 'compile:release', "Compile all CoffeeScript/LESS files into single JavaScript/CSS file", (options, done) ->
+  invoke2 'compile:release:coffee', options, ->
+    invoke2 'compile:release:less', options, done
 
-task 'build:develop', 'Compile CoffeeScript/LESS files into JavaScript/CSS files', (options) ->
-  invoke 'compile:coffee' if SRC_ROOT
-  invoke 'compile:coffee:test' if TEST_ROOT
-  invoke 'compile:less' if STYLE_ROOT
+task2 'minify', "Minify product JavaScript/CSS file", (options, done) ->
+  invoke2 'minify:javascript', options, ->
+    invoke2 'minify:css', options, done
 
+task2 'compile:coffee', "Compile CoffeeScript files to JavaScript files", (options, done) ->
+  compileCoffee(SCRIPT_FILES, SCRIPT_CS_ROOT, SCRIPT_JS_ROOT, options, done)
 
-task 'build:release', 'Compile CoffeeScript/LESS files into a single JavaScript/CSS file', (options) ->
-  invoke 'compile:coffee:release' if SRC_ROOT
-  invoke 'compile:less:release' if STYLE_ROOT
-  invoke 'minify:javascript'
-  invoke 'minify:css'
+task2 'compile:coffee:test', "Compile CoffeeScript files to JavaScript files for Unittest", (options, done) ->
+  compileCoffee(TEST_FILES, TEST_CS_ROOT, TEST_JS_ROOT, options, done)
 
-
-task 'release', 'Release the product (Compile as release mode and minify)', (options) ->
-  options.watch = false
-  invoke 'lint'
-  invoke 'build:release'
-
-
-task 'compile:coffee', "Compile CoffeeScript files to JavaScript files", (options) ->
-  console.title "Compile CoffeeScript files to JavaScript files ..."
-  compile = (src, dst) ->
-    try
-      fork.coffee src, dst, options, ->
-        console.success "Compile", path.basename(src), "->", dst
-    catch e
-      console.fail "Compile", path.basename(src), "->", dst
-      console.error("  Error:", e.message)
-      notify("Failed to compile `#{src}`\n\n#{e.message}", {'title': "Cakefile"});
+task2 'compile:less', "Compile LESS files to CSS files", (options, done) ->
+  complete = ->
+    if options.watch
+      console.log " + Watching file changes..."
+    done(options) if done
+  # create file list
+  fileList = fork.globset(STYLE_FILES, STYLE_LESS_ROOT, '.less')
+  return if fileList.length <= 0
+  console.log.strong "Compile LESS files to CSS files ..."
+  # compile each CoffeeScript to JavaScript
   options.bare = true
-  filePairList = makeFilePairList(SRC_ROOT, SRC_CS, SRC_JS, '.js', SRC_FILES)
-  if filePairList.length > 0
-    for filePair in filePairList then do (filePair) ->
-      [src, dst] = filePair
-      compile(src, dst)
-      if options.watch
-        fs.watchFile(src, -> compile(src, dst))
+  options.encoding = options.encoding or 'utf-8'
+  remaining = fileList.length
+  for src in fileList then do (src) ->
+    base = truncateString(src, lessRoot, '.less')
+    dst = cssRoot + base + '.css'
+    compile = ->
+      fork.compiler.less src, dst, options, ->
+        complete() if --remaining is 0
+    compile()
+    if options.watch
+      fs.watchFile src, compile
+  return false
 
+task2 'compose:coffee', "Compose CoffeeScript files to a single file", (options, done) ->
+  dst = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.coffee"
+  # create file list
+  fileList = fork.globset(SCRIPT_FILES, SCRIPT_CS_ROOT, '.coffee')
+  return if fileList.length <= 0
+  console.log.strong "Compose CoffeeScript files to a single CoffeeScript file ..."
+  # compose to release file
+  fork.compose fileList, dst, options.encoding, ->
+    console.success "Compose CoffeeScript files to", dst
+    done(options) if done
+  return false
 
-task 'compile:coffee:test', "Compile CoffeeScript files to JavaScript files for Unittest", (options) ->
-  console.title "Compile CoffeeScript files to JavaScript files for Unittest ..."
-  compile = (src, dst) ->
-    try
-      fork.coffee src, dst, options, ->
-        console.success "Compile", path.basename(src), "->", dst
-    catch e
-      console.fail "Compile", path.basename(src), "->", dst
-      console.error("  Error:", e.message)
-      notify("Failed to compile `#{src}`\n\n#{e.message}", {'title': "Cakefile"});
-  options.bare = false
-  filePairList = makeFilePairList(TEST_ROOT, TEST_CS, TEST_JS, '.js', TEST_FILES)
-  if filePairList.length > 0
-    for filePair in filePairList then do (filePair) ->
-      [src, dst] = filePair
-      compile(src, dst)
-      if options.watch
-        fs.watchFile(src, -> compile(src, dst))
+task2 'compose:less', "Compose LESS files to a single file", (options, done) ->
+  dst = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.less"
+  # create file list
+  fileList = fork.globset(STYLE_FILES, STYLE_LESS_ROOT, '.less')
+  return if fileList.length <= 0
+  console.log.strong "Compose LESS files to a single LESS file ..."
+  # compose to release file
+  fork.compose fileList, dst, options.encoding, ->
+    console.success "Compose LESS files to", dst
+    done(options) if done
+  return false
 
+task2 'compile:release:coffee', "Compile composed CoffeeScript file to a single JavaScript file", (options, done) ->
+  invoke2 'test:lint', options, ->
+    invoke2 'compose:coffee', options, ->
+      src = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.coffee"
+      dst = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.js"
+      if not fork.existsSync src
+        done(options) if done
+        return
+      console.log.strong "Compile composed CoffeeScript file to a single JavaScript files ..."
+      # compile
+      options.bare = false
+      options.encoding = options.encoding or 'utf-8'
+      fork.compiler.coffee src, dst, options, ->
+        prependHeaderToFile dst, HEADER_JS, options.encoding, ->
+          console.success "Add Header to the compiled file ..."
+          done(options) if done
 
-task 'compile:coffee:release', "Compile CoffeeScript files to a single JavaScript file", (options) ->
-  console.title "Compile CoffeeScript files to a single JavaScript file..."
-  compose = (src) ->
-    fileList = makeFileList(LIB_ROOT, LIB_JS, LIB_JS_FILES)
-    fileList.push src
-    libContents = fork.readAllFiles fileList, (libContents) ->
-      # write all with header
-      contents = [HEADER_JS]
-      contents = contents.concat(libContents)
-      fs.writeFile src, contents.join("\n"), (err) ->
-        throw err if err
-        console.success "The file has composed with header and extras"
-  compile = (srcs, dst) ->
-    try
-      fork.coffee srcs, dst, options, ->
-        console.success "Compile to", dst
-        compose(dst)
-    catch e
-      console.fail "Compile", "->", dst
-      console.error("  Error:", e.message)
-      notify("Failed to compile `#{dst}`\n\n#{e.message}", {'title': "Cakefile"});
-  options.bare = false
-  dst = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.js"
-  fileList = makeFileList(SRC_ROOT, SRC_CS, SRC_FILES)
-  compile(fileList, dst) if fileList.length > 0
+task2 'compile:release:less', "Compile composed LESS file to a single CSS file", (options, done) ->
+  invoke2 'compose:less', options, ->
+    src = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.less"
+    dst = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.css"
+    if not fork.existsSync src
+      done(options) if done
+      return
+    console.log.strong "Compile composed LESS file to a single CSS files ..."
+    # compile
+    options.bare = false
+    options.encoding = options.encoding or 'utf-8'
+    fork.compiler.less src, dst, options, ->
+      prependHeaderToFile dst, HEADER_CSS, options.encoding, ->
+        console.success "Add Header to the compiled file ..."
+        done(options) if done
 
+task2 'minify:javascript', "Minify product JavaScript file", (options, done) ->
+  if YUI_COMPRESSOR
+    fork.minify.YUI_COMPRESSOR = YUI_COMPRESSOR
+  src = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.js"
+  dst = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.min.js"
+  return if not fork.existsSync(src)
+  console.log.strong "Minify product JavaScript file ..."
+  # minify
+  fork.minify src, dst, (prevSize, currSize) ->
+    prevSize = Math.round(prevSize / 100) / 10
+    currSize = Math.round(currSize / 100) / 10
+    console.success "Minify #{path.basename(src)} to #{dst} (#{prevSize} kb -> #{currSize} kb)"
+    prependHeaderToFile dst, HEADER_JS, options.encoding, ->
+      console.success "Add Header to the compiled file ..."
+      done(options) if done
+  return false
 
-task 'compile:less', "Compile LESS files to CSS files", (options) ->
-  console.title "Compile LESS files to CSS files ..."
-  compile = (src, dst) ->
-    try
-      fork.less src, dst, options, ->
-        console.success "Compile", path.basename(src), "->", dst
-    catch e
-      console.fail "Compile", path.basename(src), "->", dst
-      console.error("  Error:", e.message)
-      notify("Failed to compile `#{src}`\n\n#{e.message}", {'title': "Cakefile"});
-  filePairList = makeFilePairList(STYLE_ROOT, STYLE_LESS, STYLE_CSS, '.css', STYLE_FILES)
-  if filePairList.length > 0
-    for filePair in filePairList then do (filePair) ->
-      [src, dst] = filePair
-      compile(src, dst)
-      if options.watch
-        fs.watchFile(src, -> compile(src, dst))
+task2 'minify:css', "Minify product CSS file", (options, done) ->
+  if YUI_COMPRESSOR
+    fork.minify.YUI_COMPRESSOR = YUI_COMPRESSOR
+  src = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.css"
+  dst = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.min.css"
+  return if not fork.existsSync(src)
+  console.log.strong "Minify product CSS file ..."
+  # minify
+  fork.minify src, dst, (prevSize, currSize) ->
+    prevSize = Math.round(prevSize / 100) / 10
+    currSize = Math.round(currSize / 100) / 10
+    console.success "Minify #{path.basename(src)} to #{dst} (#{prevSize} kb -> #{currSize} kb)"
+    prependHeaderToFile dst, HEADER_CSS, options.encoding, ->
+      console.success "Add Header to the compiled file ..."
+      done(options) if done
+  return false
 
+task2 'test:lint', "Lint CoffeeScript files", (options, done) ->
+  fileList = fork.globset(SCRIPT_FILES, SCRIPT_CS_ROOT, '.coffee')
+  return if fileList.length <= 0
+  console.log.strong "Lint CoffeeScript files ..."
+  # lint
+  fork.coffeelint fileList, COFFEELINT_CONFIG, (code) ->
+    if done and (code is 0 or options.force)
+      done(options)
+    else if done
+      console.log.strong "----------------------------------------------------------------------"
+      console.error.strong "Fix listed issue(s) above before continue or use `--force` option"
+      console.log.strong "----------------------------------------------------------------------"
+  return false
 
-task 'compile:less:release', "Compile LESS files to a single CSS file", (options) ->
-  console.title "Compile LESS files to a single CSS file ..."
-  compose = (src) ->
-    fileList = makeFileList(LIB_ROOT, LIB_CSS, LIB_CSS_FILES)
-    fileList.push src
-    libContents = fork.readAllFiles fileList, (libContents) ->
-      # write all with header
-      contents = [HEADER_CSS]
-      contents = contents.concat(libContents)
-      fs.writeFile src, contents.join("\n"), (err) ->
-        throw err if err
-        console.success "The file has compose with header and extras"
-  compile = (src, dst) ->
-    try
-      fork.less src, dst, options, ->
-        console.success "Compile", "->", dst
-        compose(dst)
-    catch e
-      console.fail "Compile", "->", dst
-      console.error("  Error:", e.message)
-      notify("Failed to compile `#{src}`\n\n#{e.message}", {'title': "Cakefile"});
-  dst = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.css"
-  fileList = makeFileList(STYLE_ROOT, STYLE_LESS, STYLE_FILES)
-  compile(fileList, dst) if fileList.length > 0
+task2 'test:mocha', "Unittest CoffeeScript files (mocha)", (options, done) ->
+  fileList = fork.globset(TEST_FILES, TEST_CS_ROOT, '.coffee')
+  return if fileList.length <= 0
+  console.log.strong "Unittest CoffeeScript files with mocha ..."
+  # mocha
+  fork.mocha fileList, (code) ->
+    if done and (code is 0 or options.force)
+      done(options)
+    else if done
+      console.log.strong "----------------------------------------------------------------------"
+      console.error.strong "Fix listed issue(s) above before continue or use `--force` option"
+      console.log.strong "----------------------------------------------------------------------"
+  return false
 
-
-task 'lint', 'Analyse CoffeeScript files via coffeelint', ->
-  console.title "Analyse CoffeeScript files via coffeelint ..."
-  compile = (src, dst) ->
-  # Source Codes
-  fileList = makeFileList(SRC_ROOT, SRC_CS, SRC_FILES)
-  # Test Codes
-  fileList = fileList.concat(makeFileList(TEST_ROOT, TEST_CS, TEST_FILES))
-  # call lint
-  fork.coffeelint(fileList, COFFEELINT_CONFIG_FILE) if fileList.length > 0
-
-
-task 'test:mocha', 'Run tests of CoffeeScript files via mocha', ->
-  # Compile files before
-  invoke 'compile:coffee'
-  invoke 'compile:coffee:test'
-
-  console.title "Test CoffeeScript files via mocha ..."
-  # Find test files
-  fileList = makeFileList(TEST_ROOT, TEST_CS, TEST_FILES)
-  fork.mocha(fileList) if fileList.length > 0
-
-
-task 'test:html', 'Create HTML in Demo directory for running unittest in browser', (options) ->
-  underscore = require 'underscore'
-  # compile CoffeeScript/LESS
-  invoke 'compile:coffee'
-  invoke 'compile:coffee:test'
-  invoke 'compile:less'
-  # create instrumented js
-  invoke 'coverjs'
-  console.title "Create unittest page in demo directory..."
-  fork.makedirs(DEMO_ROOT)
-  # create javascript list
-  SRC_JS_FILES = underscore.map(SRC_FILES, (pattern) -> pattern.replace('.coffee', '.js'))
-  TEST_JS_FILES = underscore.map(TEST_FILES, (pattern) -> pattern.replace('.coffee', '.js'))
-  javascripts = []
-  javascripts = javascripts.concat(makeFileList(LIB_ROOT, LIB_JS, LIB_JS_FILES))
-  javascripts = javascripts.concat(makeFileList(SRC_ROOT, SRC_JS, SRC_JS_FILES))
-  javascripts = javascripts.concat(makeFileList(COV_ROOT, '', COV_FILES))
-  javascripts = javascripts.concat(makeFileList(TEST_ROOT, TEST_JS, TEST_JS_FILES))
-  # create stylesheet list
-  STYLE_CSS_FILES = underscore.map(STYLE_FILES, (pattern) -> pattern.replace('.less', '.css'))
-  stylesheets = []
-  stylesheets = stylesheets.concat(makeFileList(LIB_ROOT, LIB_CSS, LIB_CSS_FILES))
-  stylesheets = stylesheets.concat(makeFileList(STYLE_ROOT, STYLE_CSS, STYLE_CSS_FILES))
-  # load template
-  template = fork.loadTemplate(DEMO_ROOT, javascripts, stylesheets, options.encoding)
-  # create `test.html`
-  fs.writeFileSync(path.join(DEMO_ROOT, DEMO_TEST_FILENAME), template, options.encoding)
-  # download venders if required
-  venderPath = path.join(DEMO_ROOT, DEMO_TEST_VENDER_ROOT)
-  if options.force or not fork.existsSync(venderPath)
-    fork.makedirs(venderPath)
-    fork.downloadVenders(venderPath, DEMO_TEST_EXTRA_VENDERS)
-  # copy compiled files into DEMO_ROOT
-  fork.makedirs(path.join(DEMO_ROOT, SRC_ROOT))
-  fork.makedirs(path.join(DEMO_ROOT, TEST_ROOT))
-  fork.execFile("cp", ['-rf', path.join(SRC_ROOT, SRC_JS), path.join(DEMO_ROOT, SRC_ROOT, SRC_JS)])
-  fork.execFile("cp", ['-rf', path.join(TEST_ROOT, TEST_JS), path.join(DEMO_ROOT, TEST_ROOT, TEST_JS)])
-  fork.execFile("cp", ['-rf', path.join(COV_ROOT, ''), path.join(DEMO_ROOT, COV_ROOT)])
-
-
-task 'coverjs', 'Make instrument files of each JavaScript files via coverjs', ->
-  # Compile files before
-  invoke 'compile:coffee'
-
-  console.title "Make instrument files of each JavaScript files via coverjs"
-  # Create coverage files
-  fileList = makeFileList(SRC_ROOT, SRC_JS, COV_FILES)
-  fork.coverjs(fileList, COV_ROOT) if fileList.length > 0
-
-
-task 'minify:javascript', "Minify #{NAME}.#{VERSION}.js to #{NAME}.#{VERSION}.min.js", (options) ->
-  basename = "#{NAME}.#{VERSION}"
-  src = "#{RELEASE_ROOT}/#{basename}.js"
-  dst = "#{RELEASE_ROOT}/#{basename}.min.js"
-  path.exists src, (exists) ->
-    if exists
-      console.title "Minify #{NAME}.#{VERSION}.js to #{NAME}.#{VERSION}.min.js ..."
-      fork.minify src, dst, ->
-        console.success "The file has minified"
-        # Add Header
-        fs.readFile dst, options.encoding, (err, data) ->
-          throw err if err
-          contents = [HEADER_JS, data]
-          fs.writeFile dst, contents.join("\n"), (err) ->
-            throw err if err
-            console.success "The file has compose with Header"
-
-
-task 'minify:css', "Minify #{NAME}.#{VERSION}.css to #{NAME}.#{VERSION}.min.css", ->
-  basename = "#{NAME}.#{VERSION}"
-  src = "#{RELEASE_ROOT}/#{basename}.css"
-  dst = "#{RELEASE_ROOT}/#{basename}.min.css"
-  path.exists src, (exists) ->
-    if exists
-      console.title "Minify #{NAME}.#{VERSION}.css to #{NAME}.#{VERSION}.min.css ..."
-      fork.minify src, dst, ->
-        console.success "The file has minified"
-        # Add Header
-        fs.readFile dst, options.encoding, (err, data) ->
-          throw err if err
-          contents = [HEADER_JS, data]
-          fs.writeFile dst, contents.join("\n"), (err) ->
-            throw err if err
-            console.success "The file has compose with Header"
+task2 'test:phantomjs', "Unittest CoffeeScript files (phantomjs)", (options, done) ->
+  filename = path.join(TEST_HTML_ROOT, TEST_HTML_FILE)
+  return if not fork.existsSync(filename)
+  console.log.strong "Unittest CoffeeScript files with phantomjs ..."
+  # mocha
+  fork.phantomjs filename, (code) ->
+    if done and (code is 0 or options.force)
+      done(options)
+    else if done
+      console.log.strong "----------------------------------------------------------------------"
+      console.error.strong "Fix listed issue(s) above before continue or use `--force` option"
+      console.log.strong "----------------------------------------------------------------------"
+  return false

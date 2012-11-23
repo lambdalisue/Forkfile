@@ -8,30 +8,42 @@ Copyright(c) lambdalisue, hashnote.net all right reserved.
 ###
 class Konsole
   @reset: '\x1b[0m'
-  @bold: '\x1b[0;1m'
-  @red: '\x1b[0;31m'
-  @green: '\x1b[0;32m'
+  @bold: '\x1b[1m'
+  @red: '\x1b[31m'
+  @green: '\x1b[32m'
   @check: '\u2713'
   @cross: '\u2A2F'
 
-  log: -> console.log.apply(@, arguments)
+  constructor: ->
+    @noColor = false
+    @log.strong = (args...) =>
+      args.unshift Konsole.bold unless @noColor
+      args.push Konsole.reset unless @noColor
+      @log.apply(@, args)
+    @info.strong = (args...) =>
+      args.unshift Konsole.bold unless @noColor
+      args.unshift Konsole.green unless @noColor
+      args.push Konsole.reset unless @noColor
+      @log.apply(@, args)
+    @error.strong = (args...) =>
+      args.unshift Konsole.bold unless @noColor
+      args.unshift Konsole.red unless @noColor
+      args.push Konsole.reset unless @noColor
+      @warn.apply(@, args)
 
-  warn: -> console.warn.apply(@, arguments)
+  log: console.log
+
+  warn: console.warn
 
   info: (args...) ->
-    args.unshift Konsole.green
-    args.push Konsole.reset
+    args.unshift Konsole.green unless @noColor
+    args.push Konsole.reset unless @noColor
     @log.apply(@, args)
 
   error: (args...) ->
-    args.unshift Konsole.red
-    args.push Konsole.reset
+    args.unshift Konsole.red unless @noColor
+    args.push Konsole.reset unless @noColor
     @warn.apply(@, args)
-
-  title: (args...) ->
-    args.unshift Konsole.bold
-    args.push Konsole.reset
-    @log.apply(@, args)
 
   success: (args...) ->
     args.unshift Konsole.check
@@ -41,4 +53,4 @@ class Konsole
     args.unshift Konsole.cross
     @error.apply(@, args)
 
-exports.konsole = new Konsole
+exports.konsole = konsole = new Konsole
