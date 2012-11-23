@@ -10,7 +10,13 @@ compiler.coffee = (src, dst, options, done) ->
       konsole.error('  Error:', err.message)
       done(err) if done
       return
-    js = coffee.compile(cs, {'bare': options.bare})
+    try
+      js = coffee.compile(cs, {'bare': options.bare})
+    catch err
+      konsole.fail('Failed to compile', src)
+      konsole.error('  Error:', err.message)
+      done(err) if done
+      return
     fs.writeFile dst, js, options.encoding, (err) ->
       if err
         konsole.fail('Failed to write', dst)
