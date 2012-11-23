@@ -11,17 +11,14 @@ Features
 `Cakefile` bundled in this repository give you the following features powered
 by `Fakefile`
 
--   Compile CoffeeScript files to JavaScript files
--   Compile CoffeeScript files to a single JavaScript file
--   Compose generated JavaScript file with Library JavaScript files
--   Compile LESS files to CSS files
--   Compile LESS files to a single CSS file
--   Compose generated CSS file with Library CSS files
--   Minify JavaScript/CSS files via YUI Compressor
--   Run unittests via Mocha
--   Create a HTML for testing in Browser via Mocha
--   Create instrumented JavaScript files via CoverJS
--   Run demo web server (0.0.0.0:8000 default)
+- Compile CoffeeScript/LESS files to JavaScript/CSS files
+- Compose CoffeeScript/LESS files to a single product JavaScript/CSS file
+- Minify JavaScript/CSS files via YUI Compressor
+- Run CUI unittests via mocha
+- Run CUI unittests via phantomjs (mocha-phantomjs)
+- Create HTML page for unittests via mocha
+- Create coverage with coverjs + mocha for on-browser coverage
+- Run demo web server (0.0.0.0:8000 default)
 
 
 How to use
@@ -39,7 +36,7 @@ How to use
         |
         +- lib                          - Library JavaScript files come here (Included in Product JavaScript file)
         |
-        +- style
+        +- sty
         |   +- less                     - LESS files come here
         |   |
         |   +- css                      - Compiled CSS files come here
@@ -53,6 +50,8 @@ How to use
         |   +- index.html               - A index HTML file for DEMO server
         |   |
         |   +- test.html                - Generated HTML file for testing in Browser
+        |   |
+        |   +- test.html.template       - Template file of test.html
         |
         +- out
         |   +- Product.0.0.0.js         - Product JavaScript file come here
@@ -95,7 +94,7 @@ How to use
 
         Run unittests via mocha in node.js
 
-    -   `cake test:html`
+    -   `cake test:phantomjs:create`
 
         Create a HTML file for testing in Browser via mocha
 
@@ -103,8 +102,8 @@ How to use
 
         Clean all generated files
 
-4.  You can regulate files you interest with `SRC_FILES`, `LIB_FILES`,
-    `TEST_FILES`, `STYLE_FILES`, and `COV_FILES`. All files are included in
+4.  You can regulate files you interest with `SCRIPT_FILES`,
+    `TEST_FILES`, and `STYLE_FILES`. All files are included in
     file list as glob pattern except if the pattern starts with `-`
 
 File Patterns
@@ -113,10 +112,10 @@ You can use *glob pattern* to regulate files include. You also can exclude
 files by adding `-` at the begining of the pattern. See example below
 
     # Include all CoffeeScript files
-    SRC_FILES = ['**/*.coffee']
+    SCRIPT_FILES = ['**/*.coffee']
 
     # Several files required to be order
-    SRC_FILES = [
+    SCRIPT_FILES = [
         'first.coffee',
         'second.coffee',
         'third.coffee',
@@ -132,7 +131,7 @@ files by adding `-` at the begining of the pattern. See example below
 Information
 ----------------------
 
--   Version: 0.1.0
+-   Version: 0.2.0
 -   Author: lambdalisue
 -   License: MIT license
 -   Url: http://github.com/lambdalisue/Forkfile

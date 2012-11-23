@@ -4,9 +4,9 @@ test.TEMPLATE_FILENAME = "test.html.template"
 test.loadTemplate = (root, javascripts, stylesheets, encoding='utf-8', done) ->
   underscore = require 'underscore'
   compileTemplate = (templateFile) ->
-    template = fs.readFileSync(templateFile, encoding)
-    template = underscore.template(template)
-    done template({'stylesheets': stylesheets, 'javascripts': javascripts})
+    fs.readFile templateFile, encoding, (err, data) ->
+      template = underscore.template(data)
+      done template({javascripts, stylesheets})
   templateFile = path.join(root, test.TEMPLATE_FILENAME)
   if not exports.existsSync(templateFile)
     # create default template file
@@ -17,7 +17,9 @@ test.loadTemplate = (root, javascripts, stylesheets, encoding='utf-8', done) ->
 
 test.downloadTemplate = (root, done) ->
   templateFile = path.join(root, test.TEMPLATE_FILENAME)
-  exports.network.download test.downloadTemplate.TEMPLATE_URL, templateFile, done
+  exports.network.download(
+    test.downloadTemplate.TEMPLATE_URL, templateFile, done
+  )
 test.downloadTemplate.TEMPLATE_URL =
   "https://raw.github.com/gist/4128967/test.html.template"
 

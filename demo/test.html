@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Unittest via Mocha</title>
+    <link rel="stylesheet" href="vender/mocha.css">
+    <link rel="stylesheet" href="vender/reporter.css">
+    
+</head>
+<body>
+    <div id="mocha"></div>
+    <div id="coverage"></div>
+    <div id="menu"></div>
+    <script src="vender/jquery.min.js"></script>
+    <script src="vender/mocha.js"></script>
+    <script src="vender/expect.js"></script>
+    <script src="vender/underscore-min.js"></script>
+    <script src="vender/backbone-min.js"></script>
+    <script src="vender/reporter.js"></script>
+    <script src="vender/JSCovReporter.js"></script>
+    <script>
+        mocha.setup({
+            ui: 'bdd',
+            ignoreLeaks: true
+        });
+    </script>
+    
+    <script src="src/js/konsole.js"></script>
+    
+    <script src="src/js/core.js"></script>
+    
+    <script src="src/js/compiler.js"></script>
+    
+    <script src="src/js/network.js"></script>
+    
+    <script src="src/js/task2.js"></script>
+    
+    <script src="src/js/test.js"></script>
+    
+    <script src="src/js/utils.js"></script>
+    
+    <script src="test/js/example.spec.js"></script>
+    
+    <script src="cov/konsole.js"></script>
+    
+    <script src="cov/core.js"></script>
+    
+    <script src="cov/compiler.js"></script>
+    
+    <script src="cov/network.js"></script>
+    
+    <script src="cov/task2.js"></script>
+    
+    <script src="cov/test.js"></script>
+    
+    <script src="cov/utils.js"></script>
+    
+    <script>
+        if (window.mochaPhantomJS) { mochaPhantomJS.run(); }
+        else {
+            mocha.run(function () {
+                if (typeof window.__$coverObject !== 'undefined') {
+                    var reporter = new JSCovReporter({ coverObject: window.__$coverObject });
+                }
+            });
+        }
+    </script>
+</body>
+</html>

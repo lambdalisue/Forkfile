@@ -1,10 +1,10 @@
 /**
- * Forkfile 0.1.0
+ * Forkfile 0.2.0
  *
  * Author:  lambdalisue
  * URL:     http://hashnote.net/
  * License: MIT License
- * 
+ *
  * Copyright (C) 2012 lambdalisue, hashnote.net all right reserved.
  */
 
@@ -264,6 +264,18 @@ Copyright(c) lambdalisue, hashnote.net all right reserved.
     if (!exports.existsSync(dirpath)) {
       return mkdirp.sync(dirpath);
     }
+  };
+
+  exports.copyFile = function(src, dst, callback) {
+    var rstream, wstream;
+    rstream = fs.createReadStream(src);
+    wstream = fs.createWriteStream(dst);
+    rstream.pipe(wstream);
+    return rstream.on('end', function() {
+      if (callback) {
+        return callback();
+      }
+    });
   };
 
   exports.globset = function(patterns, root, ext) {
@@ -600,13 +612,14 @@ Copyright(c) lambdalisue, hashnote.net all right reserved.
     }
     underscore = require('underscore');
     compileTemplate = function(templateFile) {
-      var template;
-      template = fs.readFileSync(templateFile, encoding);
-      template = underscore.template(template);
-      return done(template({
-        'stylesheets': stylesheets,
-        'javascripts': javascripts
-      }));
+      return fs.readFile(templateFile, encoding, function(err, data) {
+        var template;
+        template = underscore.template(data);
+        return done(template({
+          javascripts: javascripts,
+          stylesheets: stylesheets
+        }));
+      });
     };
     templateFile = path.join(root, test.TEMPLATE_FILENAME);
     if (!exports.existsSync(templateFile)) {
@@ -621,7 +634,7 @@ Copyright(c) lambdalisue, hashnote.net all right reserved.
   test.downloadTemplate = function(root, done) {
     var templateFile;
     templateFile = path.join(root, test.TEMPLATE_FILENAME);
-    return exports.download(test.downloadTemplate.TEMPLATE_URL, templateFile, done);
+    return exports.network.download(test.downloadTemplate.TEMPLATE_URL, templateFile, done);
   };
 
   test.downloadTemplate.TEMPLATE_URL = "https://raw.github.com/gist/4128967/test.html.template";
@@ -639,8 +652,8 @@ Copyright(c) lambdalisue, hashnote.net all right reserved.
       url = venders[filename];
       _results.push((function(filename, url) {
         filename = path.join(root, filename);
-        return exports.download(url, filename, function() {
-          exports.konsole.success('Download', url);
+        return exports.network.download(url, filename, function() {
+          konsole.success('Download', url);
           if (done && --remaining === 0) {
             return done();
           }
@@ -707,9 +720,9 @@ Copyright(c) lambdalisue, hashnote.net all right reserved.
 
   exports.coffeelint.COFFEELINT = './node_modules/coffeelint/bin/coffeelint';
 
-  exports.mocha = function(files, done) {
+  exports.mocha = function(files, reporter, done) {
     var args, mocha;
-    args = ['--reporter', 'spec', '--compilers', 'coffee:coffee-script'].concat(files);
+    args = ['--reporter', reporter || 'spec', '--compilers', 'coffee:coffee-script'].concat(files);
     mocha = exports.execFile(exports.mocha.MOCHA, args);
     return mocha.on('exit', function(code) {
       if (done) {
@@ -720,9 +733,9 @@ Copyright(c) lambdalisue, hashnote.net all right reserved.
 
   exports.mocha.MOCHA = './node_modules/mocha/bin/mocha';
 
-  exports.phantomjs = function(file, done) {
+  exports.phantomjs = function(file, reporter, done) {
     var args, phantomjs;
-    args = ['--reporter', 'spec', file];
+    args = ['--reporter', reporter || 'spec', file];
     phantomjs = exports.execFile(exports.phantomjs.PHANTOMJS, args);
     return phantomjs.on('exit', function(code) {
       if (done) {
@@ -732,5 +745,18 @@ Copyright(c) lambdalisue, hashnote.net all right reserved.
   };
 
   exports.phantomjs.PHANTOMJS = './node_modules/mocha-phantomjs/bin/mocha-phantomjs';
+
+  exports.coverjs = function(files, dst, done) {
+    var args, coverjs;
+    args = ['--recursive'].concat(files).concat(['--output', dst]);
+    coverjs = exports.execFile(exports.coverjs.COVERJS, args);
+    return coverjs.on('exit', function(code) {
+      if (done) {
+        return done(code);
+      }
+    });
+  };
+
+  exports.coverjs.COVERJS = './node_modules/coverjs/bin/cover.js';
 
 }).call(this);

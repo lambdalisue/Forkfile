@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Unittest via Mocha</title>
+    <link rel="stylesheet" href="vender/mocha.css">
+    <link rel="stylesheet" href="vender/reporter.css">
+    <% _.each(stylesheets, function(filename) { %>
+    <link rel="stylesheet" href="<%= filename %>">
+    <% }); %>
+</head>
+<body>
+    <div id="mocha"></div>
+    <div id="coverage"></div>
+    <div id="menu"></div>
+    <script src="vender/jquery.min.js"></script>
+    <script src="vender/mocha.js"></script>
+    <script src="vender/expect.js"></script>
+    <script src="vender/underscore-min.js"></script>
+    <script src="vender/backbone-min.js"></script>
+    <script src="vender/reporter.js"></script>
+    <script src="vender/JSCovReporter.js"></script>
+    <script>
+        mocha.setup({
+            ui: 'bdd',
+            ignoreLeaks: true
+        });
+    </script>
+    <% _.each(javascripts, function(filename) { %>
+    <script src="<%= filename %>"></script>
+    <% }); %>
+    <script>
+        if (window.mochaPhantomJS) { mochaPhantomJS.run(); }
+        else {
+            mocha.run(function () {
+                if (typeof window.__$coverObject !== 'undefined') {
+                    var reporter = new JSCovReporter({ coverObject: window.__$coverObject });
+                }
+            });
+        }
+    </script>
+</body>
+</html>

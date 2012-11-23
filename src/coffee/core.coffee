@@ -96,6 +96,13 @@ exports.makedirs = (dirpath) ->
   if not exports.existsSync(dirpath)
     mkdirp.sync(dirpath)
 
+exports.copyFile = (src, dst, callback) ->
+  rstream = fs.createReadStream(src)
+  wstream = fs.createWriteStream(dst)
+  rstream.pipe(wstream)
+  rstream.on 'end', ->
+    callback() if callback
+
 exports.globset = (patterns, root, ext) ->
   ###
   Create filename list with glob patterns
