@@ -1,5 +1,5 @@
 /**
- * Forkfile 0.2.0
+ * Forkfile 0.2.1
  *
  * Author:  lambdalisue
  * URL:     http://hashnote.net/
@@ -342,9 +342,18 @@ Copyright(c) lambdalisue, hashnote.net all right reserved.
         }
         return;
       }
-      js = coffee.compile(cs, {
-        'bare': options.bare
-      });
+      try {
+        js = coffee.compile(cs, {
+          'bare': options.bare
+        });
+      } catch (err) {
+        konsole.fail('Failed to compile', src);
+        konsole.error('  Error:', err.message);
+        if (done) {
+          done(err);
+        }
+        return;
+      }
       return fs.writeFile(dst, js, options.encoding, function(err) {
         if (err) {
           konsole.fail('Failed to write', dst);

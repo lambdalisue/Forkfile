@@ -131,7 +131,7 @@ files by adding `-` at the begining of the pattern. See example below
 Information
 ----------------------
 
--   Version: 0.2.0
+-   Version: 0.2.1
 -   Author: lambdalisue
 -   License: MIT license
 -   Url: http://github.com/lambdalisue/Forkfile
