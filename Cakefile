@@ -182,8 +182,8 @@ task2 'compile:less', "Compile LESS files to CSS files", (options, done) ->
   options.encoding = options.encoding or 'utf-8'
   remaining = fileList.length
   for src in fileList then do (src) ->
-    base = truncateString(src, lessRoot, '.less')
-    dst = cssRoot + base + '.css'
+    base = truncateString(src, STYLE_LESS_ROOT, '.less')
+    dst = STYLE_CSS_ROOT + base + '.css'
     compile = ->
       fork.compiler.less src, dst, options, ->
         complete() if --remaining is 0
