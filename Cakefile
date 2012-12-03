@@ -118,6 +118,29 @@ compileCoffee = (files, csRoot, jsRoot, options, done) ->
       fs.watchFile src, compile
   return false
 
+compileLess = (files, lessRoot, cssRoot, options, done) ->
+  complete = ->
+    if options.watch
+      console.log " + Watching file changes..."
+    done(options) if done
+  # create file list
+  fileList = fork.globset(files, lessRoot, '.less')
+  return if fileList.length <= 0
+  console.log.strong "Compile LESS files to CSS files ..."
+  # compile each LESS to CSS
+  options.encoding = options.encoding or 'utf-8'
+  remaining = fileList.length
+  for src in fileList then do (src) ->
+    base = truncateString(src, lessRoot, '.less')
+    dst = cssRoot + base + '.css'
+    compile = ->
+      fork.compiler.less src, dst, options, ->
+        complete() if --remaining is 0
+    compile()
+    if options.watch
+      fs.watchFile src, compile
+  return false
+
 task2 'clean', 'Clean up generated files', ->
   fork.execFile('rm', ['-rf', SCRIPT_JS_ROOT])
   fork.execFile('rm', ['-rf', TEST_JS_ROOT])
@@ -169,28 +192,7 @@ task2 'compile:coffee:test', "Compile CoffeeScript files to JavaScript files for
   compileCoffee(TEST_FILES, TEST_CS_ROOT, TEST_JS_ROOT, options, done)
 
 task2 'compile:less', "Compile LESS files to CSS files", (options, done) ->
-  complete = ->
-    if options.watch
-      console.log " + Watching file changes..."
-    done(options) if done
-  # create file list
-  fileList = fork.globset(STYLE_FILES, STYLE_LESS_ROOT, '.less')
-  return if fileList.length <= 0
-  console.log.strong "Compile LESS files to CSS files ..."
-  # compile each CoffeeScript to JavaScript
-  options.bare = true
-  options.encoding = options.encoding or 'utf-8'
-  remaining = fileList.length
-  for src in fileList then do (src) ->
-    base = truncateString(src, lessRoot, '.less')
-    dst = cssRoot + base + '.css'
-    compile = ->
-      fork.compiler.less src, dst, options, ->
-        complete() if --remaining is 0
-    compile()
-    if options.watch
-      fs.watchFile src, compile
-  return false
+  compileLess(STYLE_FILES, STYLE_LESS_ROOT, STYLE_CSS_ROOT, options, done)
 
 task2 'compose:coffee', "Compose CoffeeScript files to a single file", (options, done) ->
   dst = "#{RELEASE_ROOT}/#{NAME}.#{VERSION}.coffee"
