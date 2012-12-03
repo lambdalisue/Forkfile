@@ -20,7 +20,7 @@ License:  MIT License
 Copyright (c) lambdalisue, hashnote.net all right reserved.
 ###
 NAME                    = 'Forkfile'
-VERSION                 = '0.2.1'
+VERSION                 = '0.2.2'
 RELEASE_ROOT            = 'out'
 # Demo
 DEMO_ROOT               = 'demo'
@@ -63,7 +63,7 @@ HEADER_JS = """
 """
 HEADER_CSS = HEADER_JS
 COFFEELINT_CONFIG = null
-YUI_COMPRESSOR = '~/.yuicompressor/build/yuicompressor-2.4.7.jar'
+YUI_COMPRESSOR = '~/.yuicompressor/build/yuicompressor-2.4.jar'
 REQUIRED_MODULES = []
 ###########################################################################
 fs = require 'fs'
